@@ -1,0 +1,62 @@
+<html>
+<head>
+  <title>Firebase Chat Example</title>
+  <script type="text/javascript" src="http://static.firebase.com/v0/firebase.js"></script>
+  <script type='text/javascript' src='http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js'></script>
+  <link rel="stylesheet" type="text/css" href="firetactoe.css">
+</head>
+<body style="text-align: center;">
+<h1>Firebase Tetris Example</h1>
+<div>
+  <canvas id="canvas0" width="480" height="480" class="board"></canvas>
+</div>
+<input type="radio" name="group1" value="X" id="radiox" checked> Team X<br>
+<input type="radio" name="group1" value="Y"> Team O<br>
+
+<script type='text/javascript'>
+
+  var boardState = [[null, null, null],[null, null, null],[null, null, null]];
+
+  function renderBoard(state) {
+    //set up the canvas
+    var c=document.getElementById("canvas0");
+    var ctx=c.getContext("2d");
+
+    //clear the board
+    ctx.fillStyle="#ffffff";
+    ctx.fillRect(0, 0, 480, 480);
+
+    //draw the vertical & horizontal lines
+    ctx.fillStyle="#000000";
+    ctx.fillRect(157, 0, 4, 480);
+    ctx.fillRect(317, 0, 4, 480);
+    ctx.fillRect(0, 157, 480, 4);
+    ctx.fillRect(0, 317, 480, 4);
+
+    //draw the x's and o's
+    ctx.font = '160px sans-serif';
+    ctx.textBaseline = 'top';
+
+    for(var y = 0; y < state.length; y++) {
+      for(var x = 0; x < state[y].length; x++) {
+        var c = state[y][x];
+        if(c != null) {
+          ctx.fillText(c, x*160 + 20, y*160 - 10);
+        }
+      }
+    }
+  }
+
+  //Add a click handler
+  $("#canvas0").click(function(a, b, c) {
+    var c = $("#radiox").attr("checked") ? 'X' : 'O';
+    boardState[Math.floor(a.offsetY / 160)][Math.floor(a.offsetX / 160)] = c;
+    renderBoard(boardState);
+  });
+
+
+  renderBoard(boardState);
+
+</script>
+</body>
+</html>
