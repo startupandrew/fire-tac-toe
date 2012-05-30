@@ -10,52 +10,116 @@
 <div>
   <canvas id="canvas0" width="480" height="480" class="board"></canvas>
 </div>
-<input type="radio" name="group1" value="X" id="radiox" checked> Team X<br>
-<input type="radio" name="group1" value="Y"> Team O<br>
+<div id='playertext'>You are currently a spectator.</div>
+<input type="button" id="clear" value="Restart Game" />
 
 <script type='text/javascript'>
 
-  var boardState = [[null, null, null],[null, null, null],[null, null, null]];
+  var rootRef = new Firebase("http://gamma.firebase.com/firetactoe")
+  var boardRef = rootRef.child("board");
+  var playersRef = rootRef.child("players");
 
-  function renderBoard(state) {
-    //set up the canvas
-    var c=document.getElementById("canvas0");
-    var ctx=c.getContext("2d");
+  var isWatching = true;
 
-    //clear the board
+  var myPlayerNum = 0;
+
+  //set up the canvas
+  var c=document.getElementById("canvas0");
+  var ctx=c.getContext("2d");
+
+  //draw the vertical & horizontal lines
+  ctx.fillStyle="#000000";
+  ctx.fillRect(157, 0, 4, 480);
+  ctx.fillRect(317, 0, 4, 480);
+  ctx.fillRect(0, 157, 480, 4);
+  ctx.fillRect(0, 317, 480, 4);
+  ctx.fillStyle="#ffffff";
+
+  //set up fonts
+  ctx.font = '160px sans-serif';
+  ctx.textBaseline = 'top';
+
+  function renderSquare(x, y, c) {
     ctx.fillStyle="#ffffff";
-    ctx.fillRect(0, 0, 480, 480);
+    ctx.fillRect(x*160 + 3, y*160 + 3, 154, 154);
+    if(c != null) {
+      ctx.fillStyle="#000000";
+      ctx.fillText(c, x*160 + 20, y*160 - 10);
+    }
+  }
 
-    //draw the vertical & horizontal lines
-    ctx.fillStyle="#000000";
-    ctx.fillRect(157, 0, 4, 480);
-    ctx.fillRect(317, 0, 4, 480);
-    ctx.fillRect(0, 157, 480, 4);
-    ctx.fillRect(0, 317, 480, 4);
-
-    //draw the x's and o's
-    ctx.font = '160px sans-serif';
-    ctx.textBaseline = 'top';
-
-    for(var y = 0; y < state.length; y++) {
-      for(var x = 0; x < state[y].length; x++) {
-        var c = state[y][x];
-        if(c != null) {
-          ctx.fillText(c, x*160 + 20, y*160 - 10);
-        }
-      }
+  //Set up callbacks that render the board.
+  for(var x = 0; x < 3; x++) {
+    for(var y = 0; y < 3; y++) {
+      boardRef.child(x).child(y).on("value", (function() {
+        var myX = x, myY = y;
+        return function(d) {
+          renderSquare(myX, myY, d.val());
+        };
+      })());
     }
   }
 
   //Add a click handler
-  $("#canvas0").click(function(a, b, c) {
-    var c = $("#radiox").attr("checked") ? 'X' : 'O';
-    boardState[Math.floor(a.offsetY / 160)][Math.floor(a.offsetX / 160)] = c;
-    renderBoard(boardState);
+  $("#canvas0").click(function(a) {
+    var c = myPlayerNum == 0 ? 'X' : 'O';
+    boardRef.child(Math.floor(a.offsetX / 160)).child(Math.floor(a.offsetY / 160)).set(c);
   });
 
+  $("#clear").click(function() {
+    boardRef.set(null);
+  });
 
-  renderBoard(boardState);
+  var startPlaying = function(playerNum) {
+    myPlayerNum = playerNum;
+    $("#playertext").text("You are player: " + (playerNum == 0 ? "X" : "O"));
+  }
+
+
+  var waitToJoin = function() {
+    // Listen on 'online' location for player0 and player1.
+    playersRef.child('player0/online').on('value', function(onlineSnap) {
+      if (onlineSnap.val() === null && true === isWatching) {
+        tryToJoin(0);
+      }
+    });
+
+    playersRef.child('player1/online').on('value', function(onlineSnap) {
+      if (onlineSnap.val() === null && true === isWatching) {
+        tryToJoin(1);
+      }
+    });
+  };
+
+
+  /**
+   * Try to join the game as the specified playerNum.
+   */
+  var tryToJoin = function(playerNum) {
+    // Set ourselves as joining to make sure we don't try to join as both players. :-)
+   isWatching = false;
+
+    var meRef = playersRef.child('player' + playerNum + '/online');
+    // Use a transaction to make sure we don't conflict with other people trying to join.
+    meRef.transaction(function(onlineVal) {
+      if (onlineVal === null) {
+        return true; // Try to set online to true.
+      } else {
+        return; // Somebody must have beat us.  Abort the transaction.
+      }
+    }, function(success) {
+      if (success) { // We got in!
+        isWatching = false;
+        meRef.removeOnDisconnect();
+        meRef.on("value", waitToJoin);
+        startPlaying(playerNum);
+      } else {
+        isWatching = true;
+      }
+    });
+  };
+
+  waitToJoin();
 
 </script>
 </body>
