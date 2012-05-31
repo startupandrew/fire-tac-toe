@@ -1,8 +1,8 @@
 <html>
 <head>
   <title>FireTacToe</title>
-  <script type="text/javascript" src="http://static.firebase.com/v0/firebase.js"></script>
-  <script type='text/javascript' src='http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js'></script>
+  <script type="text/javascript" src="firebase.js"></script>
+  <script type='text/javascript' src='jquery-1.7.1.js'></script>
   <link rel="stylesheet" type="text/css" href="firetactoe.css">
 </head>
 <body style="text-align: center;">
@@ -48,17 +48,14 @@
     }
   }
 
-  //Set up callbacks that render the board.
-  for(var x = 0; x < 3; x++) {
-    for(var y = 0; y < 3; y++) {
-      boardRef.child(x).child(y).on("value", (function() {
-        var myX = x, myY = y;
-        return function(d) {
-          renderSquare(myX, myY, d.val());
-        };
-      })());
+  //Set up callbacks that renders the board.
+  boardRef.on("value", function(d) {
+    for(var x = 0; x < 3; x++) {
+      for(var y = 0; y < 3; y++) {
+        renderSquare(x, y, d.child(x).child(y).val());
+      }
     }
-  }
+  });
 
   //Add a click handler
   $("#canvas0").click(function(a) {
@@ -123,19 +120,16 @@
   //Cheating detection
   var previousBoard = [[null, null, null], [null, null, null], [null, null, null]];
 
-  for(var x = 0; x < 3; x++) {
-    for(var y = 0; y < 3; y++) {
-      boardRef.child(x).child(y).on("value", (function() {
-        var myX = x, myY = y;
-        return function(d) {
-          if(previousBoard[myX][myY] !== null && d.val() !== null) {
-            alert("Cheater!");
-          }
-          previousBoard[myX][myY] = d.val();
-        };
-      })());
+  boardRef.on("value", function(d) {
+    for(var x = 0; x < 3; x++) {
+      for(var y = 0; y < 3; y++) {
+        if(d.child(x).child(y).val() !== previousBoard[x][y] && previousBoard[x][y] !== null) {
+          alert("Cheater!");
+        }
+        previousBoard[x][y] = d.child(x).child(y).val();;
+      }
     }
-  }
+  });
 
 </script>
 </body>
